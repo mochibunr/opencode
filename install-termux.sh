@@ -78,9 +78,8 @@ ln -sf libstdc++.so.6.0.34 "$ROOT/lib/libstdc++.so.6"
 # managed service. If we launch through the loader, process.execPath becomes
 # ld-musl-aarch64.so.1 and the re-exec tries to load "serve" as an executable.
 log "Configuring ARM64 ELF interpreter..."
-"$PREFIX/bin/patchelf" --set-interpreter "$ROOT/lib/ld-musl-aarch64.so.1" --set-rpath "$ROOT/lib" "$ROOT/bin/opencode" || die "failed to configure musl ELF interpreter"
+"$PREFIX/bin/patchelf" --set-interpreter "$ROOT/lib/ld-musl-aarch64.so.1" "$ROOT/bin/opencode" || die "failed to configure musl ELF interpreter"
 [ "$("$PREFIX/bin/patchelf" --print-interpreter "$ROOT/bin/opencode")" = "$ROOT/lib/ld-musl-aarch64.so.1" ] || die "ELF interpreter was not configured correctly"
-[ "$("$PREFIX/bin/patchelf" --print-rpath "$ROOT/bin/opencode")" = "$ROOT/lib" ] || die "ELF runtime path was not configured correctly"
 
 cat > "$BIN" <<'EOF'
 #!/system/bin/sh
