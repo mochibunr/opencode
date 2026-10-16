@@ -126,5 +126,14 @@ kill "$SERVICE_PID" 2>/dev/null || true
 wait "$SERVICE_PID" 2>/dev/null || true
 SERVICE_PID=""
 
+log "Testing managed-service client path..."
+HOME="$SERVICE_HOME" \
+XDG_STATE_HOME="$TMP/service-state" \
+XDG_DATA_HOME="$TMP/service-data" \
+XDG_CONFIG_HOME="$TMP/service-config" \
+XDG_CACHE_HOME="$TMP/service-cache" \
+timeout 20 "$BIN" session list --format json >/dev/null ||
+  die "OpenCode client could not start or connect to its managed service"
+
 log "OpenCode v$VERSION installed successfully."
 log "Run: opencode"
