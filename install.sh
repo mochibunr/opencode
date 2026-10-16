@@ -14,7 +14,6 @@ TMP="${TMPDIR:-$PREFIX/tmp}/opencode-install.$$"
 ALPINE_VERSION="${OPENCODE_ALPINE_VERSION:-3.24.2}"
 ALPINE_BRANCH="${OPENCODE_ALPINE_BRANCH:-3.24}"
 ALPINE_BASE="https://dl-cdn.alpinelinux.org/alpine/v$ALPINE_BRANCH"
-ALPINE_ROOTFS="$ALPINE_BASE/releases/aarch64/alpine-minirootfs-$ALPINE_VERSION-aarch64.tar.gz"
 ALPINE_MAIN="$ALPINE_BASE/main/aarch64"
 OPENCODE_TARBALL="https://registry.npmjs.org/@opencode/cli-linux-arm64-musl/-/cli-linux-arm64-musl-$VERSION.tgz"
 
@@ -43,26 +42,28 @@ cp "$BINARY" "$ROOT/bin/opencode"
 chmod 755 "$ROOT/bin/opencode"
 
 log "Installing musl runtime from Alpine $ALPINE_VERSION..."
-curl -fL --retry 3 --retry-delay 1 "$ALPINE_ROOTFS" -o "$TMP/alpine.tar.gz"
-mkdir -p "$TMP/alpine"
-tar -xzf "$TMP/alpine.tar.gz" -C "$TMP/alpine"
-
-LOADER="$TMP/alpine/lib/ld-musl-aarch64.so.1"
-[ -f "$LOADER" ] || die "Alpine musl loader was not found"
-cp "$LOADER" "$ROOT/lib/ld-musl-aarch64.so.1"
-chmod 755 "$ROOT/lib/ld-musl-aarch64.so.1"
-
 INDEX="$(curl -fsSL "$ALPINE_MAIN/")" || die "could not read Alpine package index"
+
+MUSL_APK="$(printf '%s\n' "$INDEX" | sed -n 's/.*href="\(musl-[^"]*\.apk\)".*/\1/p' | grep -v -- '-dbg-' | grep -v -- '-dev-' | sort -V | tail -n 1)"
 LIBSTDCXX_APK="$(printf '%s\n' "$INDEX" | sed -n 's/.*href="\(libstdc++-[^"]*\.apk\)".*/\1/p' | sort -V | tail -n 1)"
 LIBGCC_APK="$(printf '%s\n' "$INDEX" | sed -n 's/.*href="\(libgcc-[^"]*\.apk\)".*/\1/p' | sort -V | tail -n 1)"
+
+[ -n "$MUSL_APK" ] || die "could not resolve Alpine musl package"
 [ -n "$LIBSTDCXX_APK" ] || die "could not resolve Alpine libstdc++ package"
 [ -n "$LIBGCC_APK" ] || die "could not resolve Alpine libgcc package"
 
 mkdir -p "$TMP/apk"
-for apk_name in "$LIBSTDCXX_APK" "$LIBGCC_APK"; do
+
+for apk_name in "$MUSL_APK" "$LIBSTDCXX_APK" "$LIBGCC_APK"; do
+  log "Downloading $apk_name..."
   curl -fL --retry 3 --retry-delay 1 "$ALPINE_MAIN/$apk_name" -o "$TMP/$apk_name"
   tar -xzf "$TMP/$apk_name" -C "$TMP/apk"
 done
+
+LOADER="$TMP/apk/lib/ld-musl-aarch64.so.1"
+[ -f "$LOADER" ] || die "Alpine musl loader was not found"
+cp "$LOADER" "$ROOT/lib/ld-musl-aarch64.so.1"
+chmod 755 "$ROOT/lib/ld-musl-aarch64.so.1"
 
 find "$TMP/apk/usr/lib" -maxdepth 1 -type f -name 'libstdc++.so*' -exec cp -a {} "$ROOT/lib/" \;
 find "$TMP/apk/usr/lib" -maxdepth 1 -type f -name 'libgcc_s.so*' -exec cp -a {} "$ROOT/lib/" \;
