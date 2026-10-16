@@ -7,7 +7,7 @@ This fork includes a Termux installer for OpenCode v2.
 On an ARM64 Termux device:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/mochibunr/opencode/android-termux-arm64/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/mochibunr/opencode/dev/install-termux.sh | sh
 ```
 
 The installer does not use npm, proot, chroot, Docker, or root.
@@ -23,7 +23,7 @@ and exposes:
 $PREFIX/bin/opencode
 ```
 
-The wrapper launches OpenCode through the musl loader and uses `--standalone` by default so the CLI does not depend on the shared background service.
+The installer patches the OpenCode ELF interpreter to the bundled musl loader. This lets OpenCode/Bun re-execute its real `process.execPath` when starting the managed background service, instead of accidentally re-executing the musl loader with `serve` as its program.
 
 ## Version
 
@@ -50,7 +50,7 @@ The installer downloads the OpenCode ARM64 musl package from the npm registry di
 
 ## Important implementation detail
 
-Android uses Bionic libc, while the OpenCode ARM64 musl binary uses musl. Termux can execute the binary without a Linux userspace/container by invoking the musl dynamic loader directly and supplying the required musl libraries.
+Android uses Bionic libc, while the OpenCode ARM64 musl binary uses musl. Termux can execute the binary without a Linux userspace/container by patching the ELF interpreter to the bundled musl loader and supplying the required musl libraries. The launcher also removes Termux’s Bionic `LD_PRELOAD`, which is incompatible with the musl process.
 
 This is a native Termux process, but it is **not** a pure Bionic build. A future pure-Bionic build would require Android-specific native builds of OpenTUI and PTY dependencies.
 
