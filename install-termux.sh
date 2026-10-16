@@ -5,7 +5,8 @@ VERSION="${OPENCODE_VERSION:-2.0.31}"
 PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
 ROOT="${OPENCODE_INSTALL_DIR:-$PREFIX/lib/opencode}"
 BIN="$PREFIX/bin/opencode"
-TMP="${TMPDIR:-$PREFIX/tmp}/opencode-install.$$"
+TMP="${TMPDIR:-$PREFIX/tmp}/opencode-install.$"
+SERVICE_PID=""
 
 ALPINE_BASE="https://dl-cdn.alpinelinux.org/alpine/v3.24"
 ALPINE_LIB="$ALPINE_BASE/main/aarch64"
@@ -14,7 +15,7 @@ LIBGCC="$ALPINE_LIB/libgcc-15.2.0-r5.apk"
 LIBSTDCXX="$ALPINE_LIB/libstdc++-15.2.0-r5.apk"
 OPENCODE="https://registry.npmjs.org/@opencode/cli-linux-arm64-musl/-/cli-linux-arm64-musl-$VERSION.tgz"
 
-cleanup() { rm -rf "$TMP"; }
+cleanup() { [ -z "$SERVICE_PID" ] || kill "$SERVICE_PID" 2>/dev/null || true; rm -rf "$TMP"; }
 trap cleanup EXIT INT TERM
 
 die() { printf '%s\n' "opencode-termux: ERROR: $*" >&2; exit 1; }
@@ -107,7 +108,11 @@ SERVICE_PID=$!
 SERVICE_ALIVE=false
 for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
   if kill -0 "$SERVICE_PID" 2>/dev/null; then
-    SERVICE_ALIVE=true
+    state="$(awk '{print $3}' "/proc/$SERVICE_PID/stat" 2>/dev/null || true)"
+    if [ "$state" != "Z" ]; then
+      SERVICE_ALIVE=true
+      break
+    fi
     break
   fi
   sleep 0.2
@@ -119,6 +124,7 @@ if [ "$SERVICE_ALIVE" != "true" ]; then
 fi
 kill "$SERVICE_PID" 2>/dev/null || true
 wait "$SERVICE_PID" 2>/dev/null || true
+SERVICE_PID=""
 
 log "OpenCode v$VERSION installed successfully."
 log "Run: opencode"
