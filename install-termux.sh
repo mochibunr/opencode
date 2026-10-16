@@ -68,33 +68,33 @@ cat > "$BIN" <<'EOF'
 #!/system/bin/sh
 set -eu
 ROOT="__OPENCODE_ROOT__"
-LOADER="\$ROOT/lib/ld-musl-aarch64.so.1"
-PROGRAM="\$ROOT/bin/opencode"
+LOADER="$ROOT/lib/ld-musl-aarch64.so.1"
+PROGRAM="$ROOT/bin/opencode"
 unset LD_PRELOAD
 unset LD_LIBRARY_PATH
-export LD_LIBRARY_PATH="\$ROOT/lib"
+export LD_LIBRARY_PATH="$ROOT/lib"
 export SSL_CERT_FILE="${SSL_CERT_FILE:-__OPENCODE_PREFIX__/etc/tls/cert.pem}"
-export TERM="\${TERM:-xterm-256color}"
+export TERM="${TERM:-xterm-256color}"
 # OpenCode v2 starts its managed service by re-executing process.execPath.
 # Under an explicit musl-loader launch, process.execPath is the loader itself,
 # so upstream would try to execute "serve" as a program. Start the managed
 # service with the real binary first, then let the client discover it.
 start_service() {
-  service_log="\$ROOT/service.log"
-  "\$LOADER" --library-path "\$ROOT/lib" "\$PROGRAM" serve --service >"\$service_log" 2>&1 &
+  service_log="$ROOT/service.log"
+  "$LOADER" --library-path "$ROOT/lib" "$PROGRAM" serve --service >"$service_log" 2>&1 &
 }
 
-case "\${1:-}" in
+case "${1:-}" in
   ""|run|attach|session|agent|mcp|plugin|project|stats|export|import|api|models)
     start_service
-    exec "\$LOADER" --library-path "\$ROOT/lib" "\$PROGRAM" "\$@"
+    exec "$LOADER" --library-path "$ROOT/lib" "$PROGRAM" "$@"
     ;;
   service|serve|--server|--standalone|--version|-v|--help|-h|help|completion|upgrade|auth)
     exec "\$LOADER" --library-path "\$ROOT/lib" "\$PROGRAM" "\$@"
     ;;
   *)
     start_service
-    exec "\$LOADER" --library-path "\$ROOT/lib" "\$PROGRAM" "\$@"
+    exec "$LOADER" --library-path "\$ROOT/lib" "\$PROGRAM" "\$@"
     ;;
 esac
 EOF
