@@ -18,7 +18,15 @@ ALPINE_BASE="https://dl-cdn.alpinelinux.org/alpine/v$ALPINE_BRANCH"
 ALPINE_MAIN="$ALPINE_BASE/main/aarch64"
 OPENCODE_TARBALL="https://registry.npmjs.org/@opencode/cli-linux-arm64-musl/-/cli-linux-arm64-musl-$VERSION.tgz"
 
-cleanup() { [ -z "$SERVICE_PID" ] || kill "$SERVICE_PID" 2>/dev/null || true; rm -rf "$TMP"; }
+cleanup() {
+  [ -z "$SERVICE_PID" ] || kill "$SERVICE_PID" 2>/dev/null || true
+  for registration in "$TMP"/service-state/opencode/service*.json; do
+    [ -f "$registration" ] || continue
+    pid="$(sed -n 's/.*"pid":\([0-9][0-9]*\).*/\1/p' "$registration" | head -n 1)"
+    [ -z "$pid" ] || kill "$pid" 2>/dev/null || true
+  done
+  rm -rf "$TMP"
+ }
 trap cleanup EXIT INT TERM
 
 die() { printf '%s\n' "opencode-termux: $*" >&2; exit 1; }
