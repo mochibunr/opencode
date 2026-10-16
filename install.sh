@@ -84,12 +84,27 @@ export SSL_CERT_FILE="\${SSL_CERT_FILE:-$PREFIX/etc/tls/cert.pem}"
 export TERM="\${TERM:-xterm-256color}"
 export OPENCODE_DISABLE_TUI_AUDIO="\${OPENCODE_DISABLE_TUI_AUDIO:-1}"
 
-case "\${1:-}" in
-  service|serve|--server|--standalone)
-    exec "\$LOADER" --library-path "\$ROOT/lib" "\$PROGRAM" "\$@"
+# OpenCode v2 starts its managed service by re-executing process.execPath.
+# Because Termux must invoke the musl loader explicitly, process.execPath becomes
+# the loader and upstream tries to execute: ld-musl-aarch64.so.1 serve ...
+# Start the service ourselves with the real OpenCode binary as argv[1], so the
+# upstream client discovers it instead of attempting the broken self-re-exec.
+start_service() {
+  service_log="$ROOT/service.log"
+  "$LOADER" --library-path "$ROOT/lib" "$PROGRAM" serve --service >"$service_log" 2>&1 &
+}
+
+case "${1:-}" in
+  ""|run|attach|session|agent|mcp|plugin|project|stats|export|import|api|models)
+    start_service
+    exec "$LOADER" --library-path "$ROOT/lib" "$PROGRAM" "$@"
+    ;;
+  service|serve|--server|--standalone|--version|-v|--help|-h|help|completion|upgrade|auth)
+    exec "$LOADER" --library-path "$ROOT/lib" "$PROGRAM" "$@"
     ;;
   *)
-    exec "\$LOADER" --library-path "\$ROOT/lib" "\$PROGRAM" --standalone "\$@"
+    start_service
+    exec "$LOADER" --library-path "$ROOT/lib" "$PROGRAM" "$@"
     ;;
 esac
 EOF
