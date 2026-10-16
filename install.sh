@@ -104,5 +104,33 @@ log "Running ARM64 smoke test..."
 "$BIN" --version >/dev/null || die "installed OpenCode failed its ARM64 smoke test"
 "$BIN" run --help >/dev/null || die "installed OpenCode failed its run-command smoke test"
 
+# Exercise the actual managed-service entrypoint in an isolated state directory.
+# This catches loader/wrapper failures that only appear when `serve --service`
+# is launched as a child process.
+SERVICE_HOME="$TMP/service-home"
+mkdir -p "$SERVICE_HOME" "$TMP/service-state" "$TMP/service-data" "$TMP/service-config" "$TMP/service-cache"
+HOME="$SERVICE_HOME" \
+XDG_STATE_HOME="$TMP/service-state" \
+XDG_DATA_HOME="$TMP/service-data" \
+XDG_CONFIG_HOME="$TMP/service-config" \
+XDG_CACHE_HOME="$TMP/service-cache" \
+"$BIN" serve --service --port 0 >"$TMP/service.log" 2>&1 &
+SERVICE_PID=$!
+SERVICE_ALIVE=false
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+  if kill -0 "$SERVICE_PID" 2>/dev/null; then
+    SERVICE_ALIVE=true
+    break
+  fi
+  sleep 0.2
+done
+if [ "$SERVICE_ALIVE" != "true" ]; then
+  wait "$SERVICE_PID" 2>/dev/null || true
+  cat "$TMP/service.log" >&2 || true
+  die "OpenCode managed service failed to start"
+fi
+kill "$SERVICE_PID" 2>/dev/null || true
+wait "$SERVICE_PID" 2>/dev/null || true
+
 log "Installed OpenCode v$VERSION successfully"
 log "Run: opencode"
