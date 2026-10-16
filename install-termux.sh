@@ -80,21 +80,21 @@ export TERM="\${TERM:-xterm-256color}"
 # so upstream would try to execute "serve" as a program. Start the managed
 # service with the real binary first, then let the client discover it.
 start_service() {
-  service_log="$ROOT/service.log"
-  "$LOADER" --library-path "$ROOT/lib" "$PROGRAM" serve --service >"$service_log" 2>&1 &
+  service_log="\$ROOT/service.log"
+  "\$LOADER" --library-path "\$ROOT/lib" "\$PROGRAM" serve --service >"\$service_log" 2>&1 &
 }
 
-case "${1:-}" in
+case "\${1:-}" in
   ""|run|attach|session|agent|mcp|plugin|project|stats|export|import|api|models)
     start_service
-    exec "$LOADER" --library-path "$ROOT/lib" "$PROGRAM" "$@"
+    exec "\$LOADER" --library-path "\$ROOT/lib" "\$PROGRAM" "\$@"
     ;;
   service|serve|--server|--standalone|--version|-v|--help|-h|help|completion|upgrade|auth)
-    exec "$LOADER" --library-path "$ROOT/lib" "$PROGRAM" "$@"
+    exec "\$LOADER" --library-path "\$ROOT/lib" "\$PROGRAM" "\$@"
     ;;
   *)
     start_service
-    exec "$LOADER" --library-path "$ROOT/lib" "$PROGRAM" "$@"
+    exec "\$LOADER" --library-path "\$ROOT/lib" "\$PROGRAM" "\$@"
     ;;
 esac
 EOF
