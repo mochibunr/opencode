@@ -70,7 +70,9 @@ set -eu
 ROOT="$ROOT"
 LOADER="\$ROOT/lib/ld-musl-aarch64.so.1"
 PROGRAM="\$ROOT/bin/opencode"
-export LD_LIBRARY_PATH="\$ROOT/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
+unset LD_PRELOAD
+unset LD_LIBRARY_PATH
+export LD_LIBRARY_PATH="\$ROOT/lib"
 export SSL_CERT_FILE="\${SSL_CERT_FILE:-$PREFIX/etc/tls/cert.pem}"
 export TERM="\${TERM:-xterm-256color}"
 exec "\$LOADER" --library-path "\$ROOT/lib" "\$PROGRAM" "\$@"
