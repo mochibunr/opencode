@@ -64,16 +64,16 @@ ln -sf libstdc++.so.6.0.34 "$ROOT/lib/libstdc++.so.6"
 [ -f "$ROOT/lib/libstdc++.so.6.0.34" ] || die "libstdc++.so.6 library was not installed correctly"
 [ -L "$ROOT/lib/libstdc++.so.6" ] || die "libstdc++.so.6 symlink was not installed correctly"
 
-cat > "$BIN" <<EOF
+cat > "$BIN" <<'EOF'
 #!/system/bin/sh
 set -eu
-ROOT="$ROOT"
+ROOT="__OPENCODE_ROOT__"
 LOADER="\$ROOT/lib/ld-musl-aarch64.so.1"
 PROGRAM="\$ROOT/bin/opencode"
 unset LD_PRELOAD
 unset LD_LIBRARY_PATH
 export LD_LIBRARY_PATH="\$ROOT/lib"
-export SSL_CERT_FILE="\${SSL_CERT_FILE:-$PREFIX/etc/tls/cert.pem}"
+export SSL_CERT_FILE="${SSL_CERT_FILE:-__OPENCODE_PREFIX__/etc/tls/cert.pem}"
 export TERM="\${TERM:-xterm-256color}"
 # OpenCode v2 starts its managed service by re-executing process.execPath.
 # Under an explicit musl-loader launch, process.execPath is the loader itself,
@@ -98,6 +98,7 @@ case "\${1:-}" in
     ;;
 esac
 EOF
+sed -i "s|__OPENCODE_ROOT__|$ROOT|g; s|__OPENCODE_PREFIX__|$PREFIX|g" "$BIN"
 chmod 755 "$BIN"
 
 log "Running ARM64 smoke test..."
