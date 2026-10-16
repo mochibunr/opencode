@@ -57,10 +57,12 @@ done
 [ -f "$TMP/libgcc/usr/lib/libgcc_s.so.1" ] || die "libgcc_s.so.1 missing from verified Alpine package"
 cp "$TMP/libgcc/usr/lib/libgcc_s.so.1" "$ROOT/lib/"
 
-STD_PATH="$(find "$TMP/libstdc++/usr/lib" -maxdepth 1 -name 'libstdc++.so.6*' -print -quit)"
-[ -n "$STD_PATH" ] || die "libstdc++.so.6 missing from verified Alpine package"
-cp -a "$STD_PATH" "$ROOT/lib/"
-[ -f "$ROOT/lib/libstdc++.so.6" ] || die "libstdc++.so.6 was not installed correctly"
+STD_REAL="$(find "$TMP/libstdc++" -type f -name 'libstdc++.so.6.*' -print -quit)"
+[ -n "$STD_REAL" ] || die "versioned libstdc++.so.6 library missing from Alpine package"
+cp "$STD_REAL" "$ROOT/lib/libstdc++.so.6.0.34"
+ln -sf libstdc++.so.6.0.34 "$ROOT/lib/libstdc++.so.6"
+[ -f "$ROOT/lib/libstdc++.so.6.0.34" ] || die "libstdc++.so.6 library was not installed correctly"
+[ -L "$ROOT/lib/libstdc++.so.6" ] || die "libstdc++.so.6 symlink was not installed correctly"
 
 cat > "$BIN" <<EOF
 #!/system/bin/sh
