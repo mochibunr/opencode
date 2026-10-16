@@ -15,29 +15,19 @@ NPM_TARBALL="https://registry.npmjs.org/@opencode/cli-linux-arm64-musl/-/cli-lin
 ALPINE_ROOTFS="$ALPINE_BASE/releases/aarch64/alpine-minirootfs-$ALPINE_VERSION-aarch64.tar.gz"
 ALPINE_MAIN="$ALPINE_BASE/main/aarch64"
 
-cleanup() {
-  rm -rf "$TMP"
-}
+cleanup() { rm -rf "$TMP"; }
 trap cleanup EXIT INT TERM
 
-die() {
-  printf '%s\\n' "opencode-termux: $*" >&2
-  exit 1
-}
-
-log() {
-  printf '%s\\n' "opencode-termux: $*"
-}
+die() { printf '%s\n' "opencode-termux: $*" >&2; exit 1; }
+log() { printf '%s\n' "opencode-termux: $*"; }
 
 [ "$(uname -m 2>/dev/null || true)" = "aarch64" ] ||
   die "this installer requires an Android ARM64 (aarch64) device"
-[ -n "${TERMUX_VERSION:-}" ] ||
-  die "this installer is for Termux"
-command -v pkg >/dev/null 2>&1 ||
-  die "Termux package manager not found"
+[ -n "${TERMUX_VERSION:-}" ] || die "this installer is for Termux"
+command -v pkg >/dev/null 2>&1 || die "Termux package manager not found"
 
 mkdir -p "$TMP"
-pkg install -y curl tar gzip >/dev/null
+pkg install -y curl tar gzip coreutils >/dev/null
 
 rm -rf "$ROOT"
 mkdir -p "$ROOT/bin" "$ROOT/lib"
@@ -59,19 +49,17 @@ tar -xzf "$TMP/alpine.tar.gz" -C "$TMP/alpine"
 
 LOADER="$TMP/alpine/lib/ld-musl-aarch64.so.1"
 [ -x "$LOADER" ] || die "Alpine musl loader was not found"
-
 cp "$LOADER" "$ROOT/lib/ld-musl-aarch64.so.1"
 chmod 755 "$ROOT/lib/ld-musl-aarch64.so.1"
 
-# libstdc++ and libgcc_s are taken from the same Alpine release as the musl loader.
-LIBSTDCXX_APK="$(curl -fsSL "$ALPINE_MAIN/" | sed -n 's/.*href="\\(libstdc++-[^"]*\\.apk\\)".*/\\1/p' | sort -V | tail -n 1)"
-LIBGCC_APK="$(curl -fsSL "$ALPINE_MAIN/" | sed -n 's/.*href="\\(libgcc-[^"]*\\.apk\\)".*/\\1/p' | sort -V | tail -n 1)"
+LIBSTDCXX_APK="$(curl -fsSL "$ALPINE_MAIN/" | sed -n 's/.*href="\(libstdc++-[^"]*\.apk\)".*/\1/p' | sort -V | tail -n 1)"
+LIBGCC_APK="$(curl -fsSL "$ALPINE_MAIN/" | sed -n 's/.*href="\(libgcc-[^"]*\.apk\)".*/\1/p' | sort -V | tail -n 1)"
 [ -n "$LIBSTDCXX_APK" ] || die "could not resolve Alpine libstdc++ package"
 [ -n "$LIBGCC_APK" ] || die "could not resolve Alpine libgcc package"
 
+mkdir -p "$TMP/apk"
 for apk_name in "$LIBSTDCXX_APK" "$LIBGCC_APK"; do
   curl -fL --retry 3 --retry-delay 1 "$ALPINE_MAIN/$apk_name" -o "$TMP/$apk_name"
-  mkdir -p "$TMP/apk"
   tar -xzf "$TMP/$apk_name" -C "$TMP/apk"
 done
 
@@ -89,21 +77,20 @@ ROOT="$ROOT"
 LOADER="\$ROOT/lib/ld-musl-aarch64.so.1"
 PROGRAM="\$ROOT/bin/opencode"
 
-export LD_LIBRARY_PATH="\$ROOT/lib${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
-export SSL_CERT_FILE="${SSL_CERT_FILE:-$PREFIX/etc/tls/cert.pem}"
-export TERM="${TERM:-xterm-256color}"
+export LD_LIBRARY_PATH="\$ROOT/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
+export SSL_CERT_FILE="\${SSL_CERT_FILE:-$PREFIX/etc/tls/cert.pem}"
+export TERM="\${TERM:-xterm-256color}"
+export OPENCODE_DISABLE_TUI_AUDIO="\${OPENCODE_DISABLE_TUI_AUDIO:-1}"
 
-# Android/Termux does not need OpenCode's desktop-specific audio integration.
-export OPENCODE_DISABLE_TUI_AUDIO="${OPENCODE_DISABLE_TUI_AUDIO:-1}"
-
-# v2 can use a private foreground server, avoiding Android-hostile background
-# re-exec behavior when the binary is launched through the musl loader.
-case "${1:-}" in
-  service|serve|--server|--standalone) set -- "$@" ;;
-  *) set -- --standalone "$@" ;;
+# Termux uses the foreground/private server path by default. This avoids the
+# background self-re-exec path, which cannot discover the real ELF when the
+# program is launched through a separate musl loader.
+case "\${1:-}" in
+  service|serve|--server|--standalone) set -- "\$@" ;;
+  *) set -- --standalone "\$@" ;;
 esac
 
-exec "$LOADER" --library-path "$ROOT/lib" "$PROGRAM" "$@"
+exec "\$LOADER" --library-path "\$ROOT/lib" "\$PROGRAM" "\$@"
 EOF
 chmod 755 "$BIN"
 
